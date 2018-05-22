@@ -1,0 +1,122 @@
+/* lcf file for MPC560xB processors                                         */
+/*                                                                          */
+/* Note internal memory configurations vary among the various family        */
+/* devices.                                                                 */
+/*                                                                          */
+/*   +-----------+------------+                                             */
+/*   |  Device   | MPC5645S   |                                             */
+/*   +-----------+------------+                                             */
+/*   |SRAM/Flash | 64KB/      |                                             */
+/*   |           | 2MB        |                                             */
+/*   +-----------+------------+                                             */
+/*                                                                          */
+/* These memory definitions will allow the stationery example to run on     */
+/* the smallest */
+/*APP_FLASH		:      org = 0x00008000,   len = 0x001F8000*/
+MEMORY
+{
+    resetvector:           org = 0x00000000,   len = 0x00000008
+    init:		           org = 0x00000020,   len = 0x00000FE0	
+    exception_handlers:    org = 0x00001000,   len = 0x00001000
+ 
+    internal_flash	:	   org = 0x00002000,   len = 0x00002000
+    BOOT_FLASH	:          org = 0x00004000,   len = 0x00002000
+    
+    RESTART_FLASH :        org = 0x00006000,   len = 0x00002000
+
+    USER_FLASH		:      org = 0x0000C000,   len = 0x001F4000
+    
+    internal_ram:          org = 0x40000000,   len = 0x0000CA00
+    
+    ERASE_FLASH_RAM: 	   org = 0x4000CA00,   len = 0x00000300
+    PROG_FLASH_RAM:		   org = 0x4000CD00,   len = 0x00000300	
+    
+    BOOT_RAM		:      org = 0x4000D000,   len = 0x00001A00
+    
+    CAN_TX_RAM		:	   org = 0x4000EA00,   len = 0x00000600
+    CAN_RX_RAM		:	   org = 0x4000F000,   len = 0x00000600
+ 
+    heap  :                org = 0x4000F600,   len = 0x00000500 
+    stack :                org = 0x4000FB00,   len = 0x00000500 
+	
+	graphics_ram	  :	   org = 0x60000000,   len = 0x000FFFFF
+
+}
+
+/* This will ensure the rchw and reset vector are not stripped by the linker */
+FORCEACTIVE { "bam_rchw" "bam_resetvector" }
+
+SECTIONS
+{
+    .__bam_bootarea LOAD (0x00000000): {} > resetvector
+
+    GROUP : {
+      .init LOAD (0x00000020) : {}
+      .init_vle (VLECODE) LOAD (_e_init) : {
+        *(.init)
+        *(.init_vle)
+      }
+    } > init
+
+    GROUP : {
+      .ivor_branch_table (VLECODE) LOAD (0x00001000) : {}
+      .__exception_handlers  (VLECODE) LOAD (_e_ivor_branch_table) : {} 
+    } > exception_handlers
+    
+    GROUP :{
+        .BootloaderInterface_flash (VLECODE) ALIGN(0x10) LOAD(0x00004000):{}
+    	.boot_flash (VLECODE) ALIGN(0x10) LOAD(_e_BootloaderInterface_flash):{}
+    }>BOOT_FLASH
+    
+    .reset_Interface (VLECODE) LOAD(0x00006000): {}>RESTART_FLASH
+    
+    GROUP  : {
+      .text LOAD(0x00002000): {} 
+      .text_vle (VLECODE) ALIGN(0x08) : {
+         *(.text)
+         *(.text_vle)
+       }
+       .rodata (CONST) : {
+         *(.rdata)
+         *(.rodata)
+       }
+       .ctors : {}
+       .dtors: {}
+       extab : {}
+       extabindex : {}
+    } > internal_flash
+    
+    GROUP :{
+    	.userApplicationInterface_flash (VLECODE) ALIGN(0x10) LOAD(0x0000C000):{}
+    	.userApplication_flash (VLECODE) ALIGN(0x10) LOAD(_e_userApplicationInterface_flash):{} 
+    	.const_data (CONST) LOAD(_e_userApplication_flash): {}
+    }> USER_FLASH
+    
+    g_area (BSS) LOAD(0x60000000) : {} >graphics_ram
+
+    GROUP : {
+       .__uninitialized_intc_handlertable ALIGN(2048) : {}
+       .data   : {}
+       .sdata  : {}
+       .sbss   : {}
+       .sdata2 : {}
+       .sbss2  : {}
+       .bss    : {}
+    } > internal_ram
+}
+
+/* Freescale CodeWarrior compiler address designations */
+
+_stack_addr = ADDR(stack)+SIZEOF(stack);
+_stack_end  = ADDR(stack);
+_heap_addr  = ADDR(heap);
+_heap_end   = ADDR(heap)+SIZEOF(heap);
+
+
+/* Exceptions Handlers Location (used in Exceptions.c IVPR initialization)*/
+
+EXCEPTION_HANDLERS    = ADDR(exception_handlers);
+
+/* L2 SRAM Location (used for L2 SRAM initialization) */
+
+L2SRAM_LOCATION = 0x40000000;
